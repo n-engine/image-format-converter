@@ -37,9 +37,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "converter.h"
-#include "xpm.h"
-#include "tga.h"
+#include <libifc/define.h>
+#include <libifc/converter.h>
+#include <libifc/xpm.h>
+#include <libifc/tga.h>
 
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof((a)[0]))
 
@@ -129,20 +130,43 @@ static void convert( const uchar* src, const int& from, const int& w, const int&
 	KILLARRAY(data);
 }
 
+static uchar* load_lenna()
+{
+	const uint size = 482376;
+	FILE* fp = fopen("samples/lenna_head_404x398.raw", "rb");
+	if(!fp) return 0;
+	uchar* buffer = new uchar[size];
+	fread(&buffer[0],1,1,fp); // header
+	fread(buffer,1,size,fp); // data (RGB888)
+	fclose(fp);
+	return buffer;
+}
+
 int main( int argc, char* argv[] )
 {
-	int w, h;
+	int w,h,i;
+	int in_format;
+	uchar* org;
+	uchar* dst;
 
 	mkdir("output",0777);
 
-	uchar* org = (uchar*)load_xpm( "samples/flower.xpm", w, h );
+	// using the flow sample :
+	//org = (uchar*)load_xpm( "samples/flower.xpm", w, h );
+	//in_format = RGBA8888;
+
+	// using lena raw :
+	org = load_lenna();
+	in_format = RGB888;
+	w = 404, h = 398;
 
 	if ( !org )
 		return EXIT_FAILURE;
 
-	uchar* dst = new uchar[ w * h * 4 ];
+	/** handle sufficient space for all format (max == RGBA888) */
+	dst = new uchar[ w * h * 4 ];
 
-	for ( int i = 0; i < ARRAY_SIZE(__img_str); ++i )
+	for ( i = 0; i < ARRAY_SIZE(__img_str); ++i )
 	{
 		if ( !__img_str[i].name )
 			break;
@@ -150,7 +174,7 @@ int main( int argc, char* argv[] )
 		const int id = __img_str[i].id;
 
 		// convert to new format
-		converter( org, dst, w, h, RGBA8888, id );
+		converter( org, dst, w, h, in_format, id );
 
 		// convert to all other format
 		convert( dst, i, w, h );

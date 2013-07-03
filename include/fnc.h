@@ -289,7 +289,7 @@ struct AllConditions
 				else if ( A(dst,bf) > 4 )			{ s+=4; *d++ = '2'; *d++ = '5'; *d++ = '5'; }
 				else								{ s++; *d++ = ' '; }
 			}
-			// tabulation dependind on destion alpha (rgb == 2 tab, alpha == 1)
+			// tabulation depending on destination alpha (rgb == 2 tab, alpha == 1)
 			else if( cc == '$' && *(s + 1) == 'T' && *(s + 2) == 'A' && *(s + 3) == 'L' )
 			{
 				if ( HAS_ALPHA(dst) )	{ s+=4; *d++ = '\t'; }
