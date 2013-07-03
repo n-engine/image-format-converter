@@ -1,5 +1,5 @@
 /* 
- * converter.c
+ * converter.cxx
  *
  * Copyright 2011-2012 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
@@ -19,7 +19,7 @@
  * Boston, MA 02111-1307, USA.
  *
  *
- * $Log: converter.c,v $
+ * $Log: converter.cxx,v $
  *
  *
  *
@@ -2695,5 +2695,5 @@ int converter( void *bsrc, void *bdst, const int& width, const int& height, cons
 }
 	
 // -----------------------------------------------------------------------------
-// converter.c - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
+// converter.cxx - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
 // -----------------------------------------------------------------------------

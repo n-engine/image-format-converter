@@ -32,25 +32,8 @@
 #ifndef __IMAGE_CONVERTER_CONVERTER_INCLUDE_H_
 #define __IMAGE_CONVERTER_CONVERTER_INCLUDE_H_
 
-typedef unsigned int uint;
-typedef unsigned char uchar;
-typedef unsigned short ushort;
-
+#include "define.h"
 #include "table.h"
-
-#define fast_memcpy		memcpy
-#define fast_memset		memset
-
-#define KILLARRAY(a)	if ( a ) { delete [] a ; a = 0; }
-#define KILLOBJECT(a)	if ( a ) { delete a ; a = 0; }
-
-#if defined(_DEBUG)
-	#define TRACE_DEBUG		printf
-#else
-	#define TRACE_DEBUG(...)
-#endif	// _DEBUG
-
-#define TRACE_ERROR		printf
 
 /** image format for converter (1521 function available) */
 typedef enum {

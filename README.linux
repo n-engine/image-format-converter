@@ -1,0 +1,25 @@
+Image Format Converter is a easy to use image format converter.
+39 Format actually exist and can be converted from one to another one.
+
+Its portable and easy to add to your project.
+
+For example usage, read the example.cxx code.
+
+
+to compile under *nux :
+
+sh bootstrap
+./configure --prefix=/usr
+make
+
+to install :
+
+sudo make install
+
+
+Project URL :
+http://code.google.com/p/image-format-converter/
+
+
+SVN :
+svn checkout http://image-format-converter.googlecode.com/svn/trunk/ image-format-converter

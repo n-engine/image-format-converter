@@ -1,0 +1,42 @@
+#!/bin/sh
+##
+##
+
+## die function
+die() {
+	echo
+	echo "error: $1";
+	echo
+	exit 1;
+}
+
+## try function
+try() {
+	echo "Running: '$@'"
+	$@
+	if [ "$?" != "0" ]; then
+		die "$@";
+	fi
+}
+
+if [ "$1" = "clean" ] ; then
+	make maintainer-clean
+	make distclean
+	rm -rf COPYING INSTALL Makefile.in \
+		aclocal.m4 autom4te.cache compile \
+		config.guess config.h.in config.sub \
+		configure depcomp install-sh ltmain.sh missing \
+		src/Makefile.in tools/Makefile.in tests/Makefile.in include/Makefile.in \
+		m4/*.m4
+else 
+	echo
+	try rm -Rf autom4te.cache
+	try libtoolize -c --automake
+	try aclocal -I m4
+	try autoconf -f
+	#try autoheader -f
+	try automake -acf --foreign
+	echo
+fi
+
+exit 0

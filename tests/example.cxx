@@ -34,9 +34,12 @@
 #include <ctype.h>
 #include <string.h> // for memcpy
 #include <math.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "converter.h"
 #include "xpm.h"
+#include "tga.h"
 
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof((a)[0]))
 
@@ -87,63 +90,6 @@ struct ImageStr {
 	{0,0}
 };
 
-#pragma pack(1)
-
-struct tga_header {
-	uchar id_length;
-	uchar colormap_type;
-	uchar image_type;
-	ushort colormap_index;
-	ushort colormap_length;
-	uchar colormap_size;
-	ushort x_orign;
-	ushort y_orign;
-	ushort width;
-	ushort height;
-	uchar pixel_size;
-	uchar attributes;
-};
-
-#pragma pack(4)
-
-static int save_tga( const char *name, const uchar *data, const int& width, const int& height )
-{
-	FILE *file = fopen(name,"wb");
-	if(!file)
-	{
-		fprintf( stderr,"save_tga(): error create \"%s\" file\n", name );
-		return 0;
-	}
-	
-	tga_header header;
-	fast_memset(&header,0,sizeof(header));
-	header.image_type = 2;
-	header.width = width;
-	header.height = height;
-	header.pixel_size = 32;
-	header.attributes = 0x28;
-	fwrite(&header,sizeof(header),1,file);
-	
-	// rgba->bgra
-	int size = width * height * 4;
-	uchar *buf = new uchar[size];
-	for(int i = 0; i < size; i += 4)
-	{
-		buf[i + 0] = data[i + 2];
-		buf[i + 1] = data[i + 1];
-		buf[i + 2] = data[i + 0];
-		buf[i + 3] = data[i + 3];
-	}
-
-	fwrite(buf,sizeof(uchar),size,file);
-
-	KILLARRAY(buf);
-
-	fclose(file);
-	
-	return 1;
-}
-
 static void convert( const uchar* src, const int& from, const int& w, const int& h )
 {
 	char str[256];
@@ -187,7 +133,9 @@ int main( int argc, char* argv[] )
 {
 	int w, h;
 
-	uchar* org = (uchar*)load_xpm( "flower.xpm", w, h );
+	mkdir("output",0777);
+
+	uchar* org = (uchar*)load_xpm( "samples/flower.xpm", w, h );
 
 	if ( !org )
 		return EXIT_FAILURE;

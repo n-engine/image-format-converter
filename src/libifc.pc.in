@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: @PACKAGE@
+Description: LibIFC library
+Version: @VERSION@
+Libs: -Wl,-gc-sections -Wl,${libdir}/libifc.a -lm
+Cflags: -I${includedir}
