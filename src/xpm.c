@@ -35,35 +35,34 @@
 #include <string.h> // for memcpy
 #include <math.h>
 
-typedef unsigned int uint;
-typedef unsigned char uchar;
-typedef unsigned short ushort;
+#include "define.h"
 
-#define KILLARRAY(a)	if ( a ) { delete [] a ; a = 0; }
+struct Color {
+	int key;
+	uchar color[4];
+};
 
-static uchar* load_xpm( char **src, int &width, int &height )
+
+static uchar* load_xpm_internal( char **src, int *width, int *height )
 {
 	int num_colors = 0;
 	int chars_per_pixel = 0;
+	int i,y,x,j;
 
-	if(sscanf(*src++,"%d %d %d %d",&width,&height,&num_colors,&chars_per_pixel) != 4)
+	if(sscanf(*src++,"%d %d %d %d",width,height,&num_colors,&chars_per_pixel) != 4)
 	{
-		fprintf( stderr, "load_xpm(): wrong format \"%s\"\n", *src );
+		fprintf( stderr, "load_xpm_internal(): wrong format \"%s\"\n", *src );
 		return 0;
 	}
-	
-	struct Color {
-		int key;
-		uchar color[4];
-	};
 
-	Color *colors = new Color[num_colors];
+	struct Color *colors = (struct Color*)malloc( sizeof(struct Color) * num_colors );
 
-	for(int i = 0; i < num_colors; ++i)
+	for(i = 0; i < num_colors; ++i)
 	{
 		char *s = *src++;
 		int key = 0;
-		for(int j = 0; j < chars_per_pixel; ++j)
+		int j;
+		for(j = 0; j < chars_per_pixel; ++j)
 		{
 			key = key * 128 + *s++;
 		}
@@ -78,7 +77,7 @@ static uchar* load_xpm( char **src, int &width, int &height )
 
 		if(*s++ != 'c')
 		{
-			fprintf(stderr,"load_xpm(): unknown color key '%s'\n",s);
+			fprintf(stderr,"load_xpm_internal(): unknown color key '%s'\n",s);
 			continue;
 		}
 
@@ -99,27 +98,27 @@ static uchar* load_xpm( char **src, int &width, int &height )
 		}
 		else
 		{
-			fprintf(stderr,"load_xpm(): unknown color \"%s\"\n",s);
+			fprintf(stderr,"load_xpm_internal(): unknown color \"%s\"\n",s);
 		}
 	}
 
-	uchar *data = new uchar[width * height * 4];
+	uchar *data = (uchar*)malloc( sizeof(uchar) * *width * *height * 4 );
 
-	memset(data,0,sizeof(uchar) * width * height * 4);
+	memset(data, 0, sizeof(uchar) * *width * *height * 4);
 
-	for(int y = 0; y < height; ++y)
+	for(y = 0; y < *height; ++y)
 	{
 		char *s = *src++;
-		uchar *d = &data[width * y * 4];
-		for(int x = 0; x < width; ++x)
+		uchar *d = &data[*width * y * 4];
+		for(x = 0; x < *width; ++x)
 		{
 			int key = 0;
-			for(int j = 0; j < chars_per_pixel; ++j)
+			for(j = 0; j < chars_per_pixel; ++j)
 			{
 				key = key * 128 + *s++;
 			}
-			Color *c = 0;
-			for(int i = 0; i < num_colors; ++i)
+			struct Color *c = 0;
+			for(i = 0; i < num_colors; ++i)
 			{
 				if(colors[i].key == key)
 				{
@@ -140,9 +139,18 @@ static uchar* load_xpm( char **src, int &width, int &height )
 	return data;
 }
 
-uchar* load_xpm( const char *name, int &width, int &height )
+uchar* load_xpm( const char *name, int *width, int *height )
 {
 	FILE *file = fopen(name,"rb");
+	char **dest;
+	char *d;
+	int bracket = 0, i;
+	char buf[1024];
+	int num_lines = 0;
+	int length = 0;
+	int max_length = 0;
+	char **src;
+	uchar *data;
 
 	if ( !file )
 	{
@@ -150,7 +158,6 @@ uchar* load_xpm( const char *name, int &width, int &height )
 		return 0;
 	}
 
-	char buf[1024];
 	fread(buf,strlen("/* XPM */"),1,file);
 
 	if(strncmp(buf,"/* XPM */",strlen("/* XPM */")))
@@ -159,10 +166,6 @@ uchar* load_xpm( const char *name, int &width, int &height )
 		fclose(file);
 		return 0;
 	}
-
-	int num_lines = 0;
-	int length = 0;
-	int max_length = 0;
 
 	while ( 1 )
 	{
@@ -188,19 +191,17 @@ uchar* load_xpm( const char *name, int &width, int &height )
 	num_lines = num_lines / 2 + 1;
 	max_length += 1;
 
-	char **src = new char*[num_lines];
+	src = (char**)malloc( sizeof(char*) * num_lines );
 
-	for(int i = 0; i < num_lines; ++i)
+	for(i = 0; i < num_lines; ++i)
 	{
-		src[i] = new char[max_length];
+		src[i] = (char*)malloc( sizeof(char) * max_length );
 		memset(src[i],0,sizeof(char) * max_length);
 	}
 
 	fseek(file,0,SEEK_SET);
-
-	char **dest = src;
-	char *d = *dest++;
-	int bracket = 0;
+	dest = src;
+	d = *dest++;
 
 	while(1)
 	{
@@ -227,9 +228,9 @@ uchar* load_xpm( const char *name, int &width, int &height )
 		}
 	}
 
-	uchar *data = load_xpm( src, width, height );
+	data = load_xpm_internal( src, width, height );
 
-	for( int i = 0; i < num_lines; ++i )
+	for( i = 0; i < num_lines; ++i )
 	{
 		KILLARRAY( src[i] );
 	}

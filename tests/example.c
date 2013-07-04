@@ -1,7 +1,7 @@
 /* 
- * example.cxx
+ * example.c
  *
- * Copyright 2011-2012 ESTEVE Olivier <naskel .[.at.]. gmail.com>
+ * Copyright 2011-2013 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
  * This software is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,7 +19,7 @@
  * Boston, MA 02111-1307, USA.
  *
  *
- * $Log: example.cxx,v $
+ * $Log: example.c,v $
  *
  *
  *
@@ -37,10 +37,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <libifc/define.h>
-#include <libifc/converter.h>
-#include <libifc/xpm.h>
-#include <libifc/tga.h>
+#include "define.h"
+#include "converter.h"
+#include "xpm.h"
+#include "tga.h"
 
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof((a)[0]))
 
@@ -91,14 +91,15 @@ struct ImageStr {
 	{0,0}
 };
 
-static void convert( const uchar* src, const int& from, const int& w, const int& h )
+static void convert( const uchar* src, const int from, const int w, const int h )
 {
+	int i;
 	char str[256];
 
-	uchar* dst = new uchar[ w * h * 4 ];
-	uchar* data = new uchar[ w * h * 4 ];
+	uchar* dst = (uchar*)malloc(sizeof(uchar) * w * h * 4 );
+	uchar* data = (uchar*)malloc(sizeof(uchar) * w * h * 4 );
 
-	for(int i = 0; i < ARRAY_SIZE(__img_str); ++i)
+	for(i = 0; i < ARRAY_SIZE(__img_str); ++i)
 	{
 		const int to = __img_str[i].id;
 
@@ -126,8 +127,8 @@ static void convert( const uchar* src, const int& from, const int& w, const int&
 			save_tga( str, dst, w, h );
 	}
 
-	KILLARRAY(dst);
-	KILLARRAY(data);
+	free(dst);
+	free(data);
 }
 
 static uchar* load_lenna()
@@ -135,7 +136,7 @@ static uchar* load_lenna()
 	const uint size = 482376;
 	FILE* fp = fopen("samples/lenna_head_404x398.raw", "rb");
 	if(!fp) return 0;
-	uchar* buffer = new uchar[size];
+	uchar* buffer = (uchar*)malloc(sizeof(uchar) * size );
 	fread(&buffer[0],1,1,fp); // header
 	fread(buffer,1,size,fp); // data (RGB888)
 	fclose(fp);
@@ -164,7 +165,7 @@ int main( int argc, char* argv[] )
 		return EXIT_FAILURE;
 
 	/** handle sufficient space for all format (max == RGBA888) */
-	dst = new uchar[ w * h * 4 ];
+	dst = (uchar*)malloc(sizeof(uchar) * w * h * 4 );
 
 	for ( i = 0; i < ARRAY_SIZE(__img_str); ++i )
 	{
@@ -180,12 +181,12 @@ int main( int argc, char* argv[] )
 		convert( dst, i, w, h );
 	}
 
-	KILLARRAY(org);
-	KILLARRAY(dst);
+	free(org);
+	free(dst);
 
 	return EXIT_SUCCESS;
 }
 
 // -----------------------------------------------------------------------------
-// example.cxx - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
+// example.c - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
 // -----------------------------------------------------------------------------

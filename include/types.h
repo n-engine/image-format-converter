@@ -1,5 +1,5 @@
 /* 
- * define.h
+ * types.h
  *
  * Copyright 2013 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
@@ -19,7 +19,7 @@
  * Boston, MA 02111-1307, USA.
  *
  *
- * $Log: define.h,v $
+ * $Log: types.h,v $
  *
  *
  *
@@ -29,27 +29,16 @@
  * 
  * 
  */
-#ifndef __IMAGE_CONVERTER_DEFINE_INCLUDE_H_
-#define __IMAGE_CONVERTER_DEFINE_INCLUDE_H_
+#ifndef __IMAGE_CONVERTER_TYPES_INCLUDE_H_
+#define __IMAGE_CONVERTER_TYPES_INCLUDE_H_
 
-#include "types.h"
+typedef unsigned int uint;
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned long ulong;
 
-#define fast_memcpy		memcpy
-#define fast_memset		memset
-
-#define KILLOBJECT(a)	if ( a ) { free(a); a = 0; }
-#define KILLARRAY(a)	KILLOBJECT( a )
-
-#if defined(_DEBUG)
-	#define TRACE_DEBUG		printf
-#else
-	#define TRACE_DEBUG(...)
-#endif	// _DEBUG
-
-#define TRACE_ERROR		printf
-
-#endif	// __IMAGE_CONVERTER_DEFINE_INCLUDE_H_
+#endif	// __IMAGE_CONVERTER_TYPES_INCLUDE_H_
 
 // -----------------------------------------------------------------------------
-// define.h - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
+// types.h - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
 // -----------------------------------------------------------------------------

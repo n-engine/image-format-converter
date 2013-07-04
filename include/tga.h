@@ -32,6 +32,10 @@
 #ifndef __IMAGE_CONVERTER_TGA_INCLUDE_H_
 #define __IMAGE_CONVERTER_TGA_INCLUDE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif	/** extern "C" */
+
 #pragma pack(1)
 
 struct tga_header {
@@ -51,7 +55,11 @@ struct tga_header {
 
 #pragma pack(4)
 
-int save_tga( const char *name, const uchar *data, const int& width, const int& height );
+int save_tga( const char *name, const uchar *data, const int width, const int height );
+
+#ifdef __cplusplus
+};
+#endif	/** extern "C" */
 
 #endif	// __IMAGE_CONVERTER_TGA_INCLUDE_H_
 

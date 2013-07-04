@@ -1,7 +1,7 @@
 /* 
  * converter.cxx
  *
- * Copyright 2011-2012 ESTEVE Olivier <naskel .[.at.]. gmail.com>
+ * Copyright 2011-2013 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
  * This software is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -34,6 +34,7 @@
 #include <string.h> // for memcpy
 
 #include "converter.h"
+#include "table.h"
 
 static CONV cnv_fnc[FMT_LAST][FMT_LAST];
 	
@@ -42,27 +43,27 @@ static CONV cnv_fnc[FMT_LAST][FMT_LAST];
 
 #define TABLE(in,out)	_##in##bit_to_##out##bit_table
 
-#define header_fnc		( void *bsrc, void *bdst, const int& width, const int& height )
+#define header_fnc		( void *bsrc, void *bdst, const int width, const int height )
 
 #define PIX_CPY(fmt)															\
 	void fmt ## _to_ ## fmt header_fnc									\
-		{ fast_memcpy( bdst, bsrc, width * height * sizeof( PIXEL_## fmt ) ); }	\
+		{ fast_memcpy( bdst, bsrc, width * height * sizeof( struct PIXEL_## fmt ) ); }	\
 
-#define OP_IN( fmtIn,fmtOut, op0, op1, op2 )									\
-	void fmtIn ## _to_## fmtOut header_fnc {								\
-		PIXEL_ ## fmtIn *  src = (PIXEL_ ## fmtIn *)bsrc;						\
-		PIXEL_ ## fmtOut*  dst = (PIXEL_ ## fmtOut*)bdst;						\
-		int size = width * height;												\
-		while (size--) {														\
+#define OP_IN( fmtIn,fmtOut, op0, op1, op2 )						\
+	void fmtIn ## _to_## fmtOut header_fnc {						\
+		struct PIXEL_ ## fmtIn *  src = (struct PIXEL_ ## fmtIn *)bsrc;	\
+		struct PIXEL_ ## fmtOut*  dst = (struct PIXEL_ ## fmtOut*)bdst;	\
+		int size = width * height;									\
+		while (size--) {											\
 			(*dst).r = op0; (*dst).g = op1; (*dst).b = op2;
 
-#define PIX_OP_RGB(fmtIn,fmtOut,op0,op1,op2)									\
-			OP_IN(fmtIn,fmtOut,op0,op1,op2)										\
+#define PIX_OP_RGB(fmtIn,fmtOut,op0,op1,op2)	\
+			OP_IN(fmtIn,fmtOut,op0,op1,op2)		\
 			(void)*dst++; (void)*src++;	}}
 
-#define PIX_OP_RGBA(fmtIn,fmtOut, op0, op1, op2, alpha )						\
-			OP_IN(fmtIn,fmtOut,op0,op1,op2)										\
-			(*dst).a = alpha;													\
+#define PIX_OP_RGBA(fmtIn,fmtOut, op0, op1, op2, alpha )	\
+			OP_IN(fmtIn,fmtOut,op0,op1,op2)					\
+			(*dst).a = alpha;								\
 			(void)*dst++; (void)*src++;	}}
 
 #define SRC_R			(*src).r
@@ -1134,19 +1135,19 @@ PIX_CPY				( ABGR8565 );
 
 // ---------------------------------------------------------------------------------------------------------------------------
 
-void yuv444_to_rgb24( int &r, int &g, int &b, const int& y, const int& u, const int& v )
+void yuv444_to_rgb24( int* r, int* g, int* b, const int y, const int u, const int v )
 {
 	// convert
-	r = ( ( 1192 * ( y - 16 ) + 1634 * ( v - 128 ) ) >> 10 );
-	g = ( ( 1192 * ( y - 16 ) - 832 * ( v - 128 ) - 400 * ( u - 128 ) ) >> 10 );
-	b = ( ( 1192 * ( y - 16 ) + 2066 * ( u - 128 ) ) >> 10 );
+	*r = ( ( 1192 * ( y - 16 ) + 1634 * ( v - 128 ) ) >> 10 );
+	*g = ( ( 1192 * ( y - 16 ) - 832 * ( v - 128 ) - 400 * ( u - 128 ) ) >> 10 );
+	*b = ( ( 1192 * ( y - 16 ) + 2066 * ( u - 128 ) ) >> 10 );
 	// clip
-	r = r < 0 ? 0 : r > 255 ? 255 : r; 
-	g = g < 0 ? 0 : g > 255 ? 255 : g;
-	b = b < 0 ? 0 : b > 255 ? 255 : b;
+	*r = *r < 0 ? 0 : *r > 255 ? 255 : *r; 
+	*g = *g < 0 ? 0 : *g > 255 ? 255 : *g;
+	*b = *b < 0 ? 0 : *b > 255 ? 255 : *b;
 }
 
-ushort yuv444_to_rgb565( const int& y, const int& u, const int& v )
+ushort yuv444_to_rgb565( const int y, const int u, const int v )
 {
 	uchar r,g,b;
 	// convert
@@ -1161,7 +1162,7 @@ ushort yuv444_to_rgb565( const int& y, const int& u, const int& v )
 	return p;
 }
 
-ushort yuv444_to_bgr565( const int& y, const int& u, const int& v )
+ushort yuv444_to_bgr565( const int y, const int u, const int v )
 {
 	uchar r,g,b;
 	// convert
@@ -1176,19 +1177,19 @@ ushort yuv444_to_bgr565( const int& y, const int& u, const int& v )
 	return p;
 }
 
-void rgb24_to_yuv444( int &y, int &u, int &v, const int& r, const int& g, const int& b )
+void rgb24_to_yuv444( int *y, int *u, int *v, const int r, const int g, const int b )
 {
 	// convert
-	y = ( ( 263 * r + 516 * g + 100 * b ) >> 10 ) + 16;
-	u = ( ( -152 * r - 298 * g + 450 * b ) >> 10 ) + 128;
-	v = ( ( 450 * r - 377 * g - 73 * b ) >> 10 ) + 128;
+	*y = ( ( 263 * r + 516 * g + 100 * b ) >> 10 ) + 16;
+	*u = ( ( -152 * r - 298 * g + 450 * b ) >> 10 ) + 128;
+	*v = ( ( 450 * r - 377 * g - 73 * b ) >> 10 ) + 128;
 }
 
-void* yuv422p_to_rgb(uchar* data, const int& width, const int& height)
+void* yuv422p_to_rgb_2(uchar* data, const int width, const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height * 3 );
 
-	int r, g, b;
+	int r=0, g=0, b=0;
 	uint i, size;
 	uchar Y, Y1, U, V;
 	uchar *buff		= data;
@@ -1204,13 +1205,13 @@ void* yuv422p_to_rgb(uchar* data, const int& width, const int& height)
 		V	= buff[3];
 		buff += 4;
 
-		yuv444_to_rgb24( r, g, b, Y, U, V );
+		yuv444_to_rgb24( &r, &g, &b, Y, U, V );
 
 		*outptr++ = r; // R_FROMYV(Y,V);
 		*outptr++ = g; // G_FROMYUV(Y,U,V); //b
 		*outptr++ = b; // B_FROMYU(Y,U); //v
 
-		yuv444_to_rgb24( r, g, b, Y1, U, V );
+		yuv444_to_rgb24( &r, &g, &b, Y1, U, V );
 
 		*outptr++ = r; // R_FROMYV(Y1,V);
 		*outptr++ = g; // G_FROMYUV(Y1,U,V); //b
@@ -1220,7 +1221,7 @@ void* yuv422p_to_rgb(uchar* data, const int& width, const int& height)
 	return (void*)dest;
 }
 
-void yuv422p_to_rgb_inline( uchar *data, const int& width, const int& height ) // ( const image_type_ptr &src_img, const std::wstring &format, int r, int g, int b, int a )
+void yuv422p_to_rgb_inline( uchar *data, const int width, const int height )
 {
 	int h = height;
 	int w = width;
@@ -1244,7 +1245,7 @@ void yuv422p_to_rgb_inline( uchar *data, const int& width, const int& height ) /
 	{
 		while( w > 1 )
 		{
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1254,7 +1255,7 @@ void yuv422p_to_rgb_inline( uchar *data, const int& width, const int& height ) /
 
 			src += 2;
 
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1277,7 +1278,7 @@ void yuv422p_to_rgb_inline( uchar *data, const int& width, const int& height ) /
 	free( dest );
 }
 
-void yuv422p_to_rgb( uchar *data, uchar *dest, const int& width, const int& height )
+void yuv422p_to_rgb( uchar *data, uchar *dest, const int width, const int height )
 {
 	int h = height;
 	int w = width;
@@ -1299,7 +1300,7 @@ void yuv422p_to_rgb( uchar *data, uchar *dest, const int& width, const int& heig
 	{
 		while( w > 1 )
 		{
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1309,7 +1310,7 @@ void yuv422p_to_rgb( uchar *data, uchar *dest, const int& width, const int& heig
 
 			src += 2;
 
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1328,7 +1329,7 @@ void yuv422p_to_rgb( uchar *data, uchar *dest, const int& width, const int& heig
 	}
 }
 
-void yuv422p_to_rgb565( uchar *src, uchar *dest, const int& width, const int& height )
+void yuv422p_to_rgb565( uchar *src, uchar *dest, const int width, const int height )
 {
 	uint i;
 	uint pix_len = width * height;
@@ -1365,7 +1366,7 @@ void yuv422p_to_rgb565( uchar *src, uchar *dest, const int& width, const int& he
 	}
 }
 
-void yuv422p_to_bgr565( uchar *src, uchar *dest, const int& width, const int& height )
+void yuv422p_to_bgr565( uchar *src, uchar *dest, const int width, const int height )
 {
 	//static int dump = 1;
 	uint i;
@@ -1408,7 +1409,7 @@ void yuv422p_to_bgr565( uchar *src, uchar *dest, const int& width, const int& he
 	//dump = 0;
 }
 
-void* yuv422_to_rgb( uchar *data, const int& width, const int& height ) // ( const image_type_ptr &src_img, const std::wstring &format, int r, int g, int b, int a )
+void* yuv422_to_rgb_2( uchar *data, const int width, const int height )
 {
 	int h = height;
 	int w = width;
@@ -1432,7 +1433,7 @@ void* yuv422_to_rgb( uchar *data, const int& width, const int& height ) // ( con
 	{
 		while( w > 1 )
 		{
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1442,7 +1443,7 @@ void* yuv422_to_rgb( uchar *data, const int& width, const int& height ) // ( con
 
 			src += 2;
 
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1463,7 +1464,7 @@ void* yuv422_to_rgb( uchar *data, const int& width, const int& height ) // ( con
 	return (void*)dest;
 }
 
-void yuv422_to_rgb( uchar *data, uchar* dest, const int& width, const int& height )
+void yuv422_to_rgb( uchar *data, uchar* dest, const int width, const int height )
 {
 	int h = height;
 	int w = width;
@@ -1487,7 +1488,7 @@ void yuv422_to_rgb( uchar *data, uchar* dest, const int& width, const int& heigh
 	{
 		while( w > 1 )
 		{
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src + 1 ), *( src + 3 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1497,7 +1498,7 @@ void yuv422_to_rgb( uchar *data, uchar* dest, const int& width, const int& heigh
 
 			src += 2;
 
-			yuv444_to_rgb24( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
+			yuv444_to_rgb24( &rgb[ 0 ], &rgb[ 1 ], &rgb[ 2 ], *src, *( src - 1 ), *( src + 1 ) );
 
 			*dst++ = rgb[ r ];
 			*dst++ = rgb[ g ];
@@ -1519,7 +1520,7 @@ void yuv422_to_rgb( uchar *data, uchar* dest, const int& width, const int& heigh
 }
 
 // YUV420 aka YV12
-void* yv12_to_422p( uchar *input, const int& width, const int& height )
+void* yv12_to_422p_2( uchar *input, const int width, const int height )
 {
 	uchar *dest = (uchar*)malloc( width * height * 3 );
 	int row, col;
@@ -1558,7 +1559,7 @@ void* yv12_to_422p( uchar *input, const int& width, const int& height )
 	return (void*)dest;
 }
 
-void yv12_to_422p(uchar *src, uchar* dest, const int& width, const int& height)
+void yv12_to_422p(uchar *src, uchar* dest, const int width, const int height)
 {
 	int row, col;
 	uchar *u, *_u, *v, *_v;
@@ -1595,35 +1596,35 @@ void yv12_to_422p(uchar *src, uchar* dest, const int& width, const int& height)
 }
 
 // YUV420 aka YV12
-void* yuv420_to_yuv422p(uchar *input, const int& width, const int& height)
+void* yuv420_to_yuv422p(uchar *input, const int width, const int height)
 {
-	return yv12_to_422p(input, width, height );
+	return yv12_to_422p_2(input, width, height );
 }
 
-void* yuv420_to_rgb(uchar *input, const int& width, const int& height)
+void* yuv420_to_rgb_2(uchar *input, const int width, const int height)
 {
-	void* data = yv12_to_422p(input, width, height );
+	void* data = yv12_to_422p_2(input, width, height );
 
 	yuv422p_to_rgb_inline( (uchar*)data, width, height );
 
 	return data;
 }
 
-void yuv420_to_rgb_inline( uchar *input, const int& width, const int& height )
+void yuv420_to_rgb_inline( uchar *input, const int width, const int height )
 {
 	//uchar* data = (uchar*)yv12_to_422p(input, width, height );
 	uchar* dest = (uchar*)malloc( width * height * 3 );
 
 	yv12_to_422p( input, dest, width, height );
 
-	yuv422p_to_rgb( dest, width, height );
+	yuv422p_to_rgb_2( dest, width, height );
 
 	fast_memcpy( input, dest, width * height * 3 );
 	
 	free( dest );
 }
 
-void yuv420_to_rgb( uchar *src, uchar* dest, const int& width, const int& height )
+void yuv420_to_rgb( uchar *src, uchar* dest, const int width, const int height )
 {
 	uchar* temp = (uchar*)malloc( width * height * 3 );
 
@@ -1634,7 +1635,7 @@ void yuv420_to_rgb( uchar *src, uchar* dest, const int& width, const int& height
 	free( temp );
 }
 
-void yuv420_to_rgb565( uchar *src, uchar* dest, const int& width, const int& height )
+void yuv420_to_rgb565( uchar *src, uchar* dest, const int width, const int height )
 {
 	uchar* temp = (uchar*)malloc( width * height * 3 );
 
@@ -1645,7 +1646,7 @@ void yuv420_to_rgb565( uchar *src, uchar* dest, const int& width, const int& hei
 	free( temp );
 }
 
-void yuv420_to_bgr565( uchar *src, uchar* dest, const int& width, const int& height )
+void yuv420_to_bgr565( uchar *src, uchar* dest, const int width, const int height )
 {
 	uchar* temp = (uchar*)malloc( width * height * 3 );
 
@@ -1656,9 +1657,9 @@ void yuv420_to_bgr565( uchar *src, uchar* dest, const int& width, const int& hei
 	free( temp );
 }
 
-void yuv422_to_rgb_inline( uchar *input, const int& width, const int& height )
+void yuv422_to_rgb_inline( uchar *input, const int width, const int height )
 {
-	uchar* data = (uchar*)uyvy_to_422p(input, width, height );
+	uchar* data = (uchar*)uyvy_to_422p_2(input, width, height );
 
 	yuv422p_to_rgb_inline( data, width, height );
 
@@ -1667,7 +1668,7 @@ void yuv422_to_rgb_inline( uchar *input, const int& width, const int& height )
 	free( data );
 }
 
-void yuv422_to_rgb565( uchar *src, uchar* dest, const int& width, const int& height )
+void yuv422_to_rgb565( uchar *src, uchar* dest, const int width, const int height )
 {
 	const uint size = width * height * 3;
 	uchar* temp = (uchar*)malloc( size );
@@ -1676,13 +1677,13 @@ void yuv422_to_rgb565( uchar *src, uchar* dest, const int& width, const int& hei
 	free( temp );
 }
 
-void yuv422_to_bgr565( uchar *src, uchar* dest, const int& width, const int& height )
+void yuv422_to_bgr565( uchar *src, uchar* dest, const int width, const int height )
 {
 	yuv422p_to_bgr565( src, dest, width, height );
 }
 
 // YUV 4:2:2 uyvy
-void* uyvy_to_422p(uchar *input, const int& width, const int& height)
+void* uyvy_to_422p_2(uchar *input, const int width, const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height * 3 );
 	int i, j;
@@ -1707,7 +1708,7 @@ void* uyvy_to_422p(uchar *input, const int& width, const int& height)
 	return (void*)dest;
 }
 
-void uyvy_to_422p(uchar *input, uchar* dest, const int& width, const int& height) 
+void uyvy_to_422p(uchar *input, uchar* dest, const int width, const int height) 
 {
 	int i, j;
 	uchar *y, *u, *v;
@@ -1730,7 +1731,7 @@ void uyvy_to_422p(uchar *input, uchar* dest, const int& width, const int& height
 }
 
 // YUV 4:2:2 (aka uyvy) to YUV420 (aka yv12)
-void*  uyvy_to_yv12(uchar *input, const int& width, const int& height)
+void*  uyvy_to_yv12(uchar *input, const int width, const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height * 3 );
 	int i, j, w2;
@@ -1781,87 +1782,87 @@ void*  uyvy_to_yv12(uchar *input, const int& width, const int& height)
 
 // ---------------------------------------------------------------------------------------------------------
 
-void* rgb24_to_rgb5551(uchar *data, const int& width, const int& height)
+void* rgb24_to_rgb5551(uchar *data, const int width, const int height)
 {
-	PIXEL_RGBA5551* dest = (PIXEL_RGBA5551*)malloc( width * height * sizeof(PIXEL_RGBA5551) );
+	struct PIXEL_RGBA5551* dest = (struct PIXEL_RGBA5551*)malloc( width * height * sizeof(struct PIXEL_RGBA5551) );
 
 	RGB888_to_RGBA5551( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void* rgb32_to_rgb5551(uchar *data, const int& width, const int& height)
+void* rgb32_to_rgb5551(uchar *data, const int width, const int height)
 {
-	PIXEL_RGBA5551* dest = (PIXEL_RGBA5551*)malloc( width * height * sizeof(PIXEL_RGBA5551) );
+	struct PIXEL_RGBA5551* dest = (struct PIXEL_RGBA5551*)malloc( width * height * sizeof(struct PIXEL_RGBA5551) );
 
 	RGBA8888_to_RGBA5551( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void* rgb24_to_rgb4444(uchar *data, const int& width, const int& height)
+void* rgb24_to_rgb4444(uchar *data, const int width, const int height)
 {
-	PIXEL_RGBA4444* dest = (PIXEL_RGBA4444*)malloc( width * height * sizeof(PIXEL_RGBA4444) );
+	struct PIXEL_RGBA4444* dest = (struct PIXEL_RGBA4444*)malloc( width * height * sizeof(struct PIXEL_RGBA4444) );
 
 	RGB888_to_RGBA4444( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void* rgb32_to_rgb4444(uchar *data, const int& width, const int& height)
+void* rgb32_to_rgb4444(uchar *data, const int width, const int height)
 {
-	PIXEL_RGBA4444* dest = (PIXEL_RGBA4444*)malloc( width * height * sizeof(PIXEL_RGBA4444) );
+	struct PIXEL_RGBA4444* dest = (struct PIXEL_RGBA4444*)malloc( width * height * sizeof(struct PIXEL_RGBA4444) );
 
 	RGBA8888_to_RGBA4444( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void* rgb32_to_rgb565(uchar *data, const int& width, const int& height)
+void* rgb32_to_rgb565(uchar *data, const int width, const int height)
 {
-	PIXEL_RGB565* dest = (PIXEL_RGB565*)malloc( width * height * sizeof(PIXEL_RGB565) );
+	struct PIXEL_RGB565* dest = (struct PIXEL_RGB565*)malloc( width * height * sizeof(struct PIXEL_RGB565) );
 
 	RGBA8888_to_RGB565( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void* rgb32_to_bgr565(uchar *data, const int& width, const int& height)
+void* rgb32_to_bgr565_2(uchar *data, const int width, const int height)
 {
-	PIXEL_BGR565* dest = (PIXEL_BGR565*)malloc( width * height * sizeof(PIXEL_BGR565) );
+	struct PIXEL_BGR565* dest = (struct PIXEL_BGR565*)malloc( width * height * sizeof(struct PIXEL_BGR565) );
 
 	RGBA8888_to_BGR565( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void rgb32_to_bgr565(uchar *data, uchar* dest, const int& width, const int& height)
+void rgb32_to_bgr565(uchar *data, uchar* dest, const int width, const int height)
 {
-	RGBA8888_to_BGR565( data, (PIXEL_BGR565*)dest, width, height );
+	RGBA8888_to_BGR565( data, (struct PIXEL_BGR565*)dest, width, height );
 }
 
-void* rgb24_to_rgb565(uchar *data, const int& width, const int& height)
+void* rgb24_to_rgb565_2(uchar *data, const int width, const int height)
 {
-	PIXEL_RGB565* dest = (PIXEL_RGB565*)malloc( width * height * sizeof(PIXEL_RGB565) );
+	struct PIXEL_RGB565* dest = (struct PIXEL_RGB565*)malloc( width * height * sizeof(struct PIXEL_RGB565) );
 
 	RGB888_to_RGB565( data, dest, width, height );
 
 	return (void*)dest;
 }
 
-void rgb24_to_rgb565(uchar *data, uchar* dest, const int& width, const int& height)
+void rgb24_to_rgb565(uchar *data, uchar* dest, const int width, const int height)
 {
-	RGB888_to_RGB565( data, (PIXEL_RGB565*)dest, width, height );
+	RGB888_to_RGB565( data, (struct PIXEL_RGB565*)dest, width, height );
 }
 
-void rgb24_to_bgr565(uchar *data, uchar* dest, const int& width, const int& height)
+void rgb24_to_bgr565(uchar *data, uchar* dest, const int width, const int height)
 {
-	RGB888_to_BGR565( data, (PIXEL_BGR565*)dest, width, height );
+	RGB888_to_BGR565( data, (struct PIXEL_BGR565*)dest, width, height );
 }
 
-void* rgb565_to_rgb888(ushort *data, const int& width, const int& height)
+void* rgb565_to_rgb888(ushort *data, const int width, const int height)
 {
-	PIXEL_RGB888* dest = (PIXEL_RGB888*)malloc( width * height * sizeof(PIXEL_RGB888) );
+	struct PIXEL_RGB888* dest = (struct PIXEL_RGB888*)malloc( width * height * sizeof(struct PIXEL_RGB888) );
 
 	RGB565_to_RGB888( data, dest, width, height );
 
@@ -1870,13 +1871,14 @@ void* rgb565_to_rgb888(ushort *data, const int& width, const int& height)
 
 // ---------------------------------------------------------------------------------------------------------
 
-void* rgba_float2rgba(float *data,const int& width,const int& height)
+void* rgba_float2rgba(float *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc(width * height * 4);
 	uchar *d = dest;
 	float *s = data;
+	int i;
 
-	for ( int i = 0; i < width * height; ++i )
+	for ( i = 0; i < width * height; ++i )
 	{
 		*d++ = (uchar)(*s++) * 255.0f;
 		*d++ = (uchar)(*s++) * 255.0f;
@@ -1887,13 +1889,14 @@ void* rgba_float2rgba(float *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgb2rgba(uchar *data,const int& width,const int& height)
+void* rgb2rgba(uchar *data,const int width,const int height)
 {
 	uchar *dest = ( uchar*)malloc(width * height * 4);
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for ( int i = 0; i < width * height; ++i )
+	for ( i = 0; i < width * height; ++i )
 	{
 		*d++ = *s++;
 		*d++ = *s++;
@@ -1904,13 +1907,14 @@ void* rgb2rgba(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2rgb(uchar *data,const int& width,const int& height)
+void* rgba2rgb(uchar *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc(width * height * 3);
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for ( int i = 0; i < width * height; ++i )
+	for ( i = 0; i < width * height; ++i )
 	{
 		*d++ = *s++;
 		*d++ = *s++;
@@ -1921,14 +1925,15 @@ void* rgba2rgb(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void rgba2rgb_inline( uchar *data, const int& width, const int& height )
+void rgba2rgb_inline( uchar *data, const int width, const int height )
 {
 	uchar *dest	= (uchar*)malloc( width * height * 3 );
 
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for ( int i = 0; i < width * height; ++i )
+	for ( i = 0; i < width * height; ++i )
 	{
 		*d++ = *s++;
 		*d++ = *s++;
@@ -1941,13 +1946,14 @@ void rgba2rgb_inline( uchar *data, const int& width, const int& height )
 	free( dest );
 }
 
-void* rgba2rgba(uchar *data,const int& width,const int& height)
+void* rgba2rgba(uchar *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc(width * height * 4);
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = *s++;
 		*d++ = *s++;
@@ -1958,13 +1964,14 @@ void* rgba2rgba(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2luminance_float(uchar *data,const int& width,const int& height)
+void* rgba2luminance_float(uchar *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * sizeof(float) );
 	float *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (float)(*s++) / 255.0f;
 		s += 3;
@@ -1973,13 +1980,14 @@ void* rgba2luminance_float(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2luminance_alpha_float(uchar *data,const int& width,const int& height)
+void* rgba2luminance_alpha_float(uchar *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * 2 * sizeof(float) );
 	float *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (float)(*s++) / 255.0f;
 		s += 2;
@@ -1989,13 +1997,14 @@ void* rgba2luminance_alpha_float(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2rgb_float(uchar *data,const int& width,const int& height)
+void* rgba2rgb_float(uchar *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * 3 * sizeof(float) );
 	float *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (float)(*s++) / 255.0f;
 		*d++ = (float)(*s++) / 255.0f;
@@ -2006,12 +2015,14 @@ void* rgba2rgb_float(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2rgba_float(uchar *data,const int& width,const int& height)
+void* rgba2rgba_float(uchar *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * 4 * sizeof(float) );
 	float *d = dest;
 	uchar *s = data;
-	for(int i = 0; i < width * height; ++i)
+	int i;
+
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (float)(*s++) / 255.0f;
 		*d++ = (float)(*s++) / 255.0f;
@@ -2022,13 +2033,14 @@ void* rgba2rgba_float(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgb_float2rgb(float *data,const int& width,const int& height)
+void* rgb_float2rgb(float *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * 3 * sizeof(float) );
 	uchar *d = (uchar*)dest;
 	float *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (uchar)(*s++) * 255.0f;
 		*d++ = (uchar)(*s++) * 255.0f;
@@ -2038,32 +2050,34 @@ void* rgb_float2rgb(float *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba_float2rgb(float *data,const int& width,const int& height)
+void* rgba_float2rgb(float *data,const int width,const int height)
 {
 	float *dest = (float*)malloc( width * height * 3 * sizeof(float) );
 	uchar *d = (uchar*)dest;
 	float *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = (uchar)(*s++) * 255.0f;
 		*d++ = (uchar)(*s++) * 255.0f;
 		*d++ = (uchar)(*s++) * 255.0f;
-		*s++;
+		(void)*s++;
 	}
 
 	return (void*)dest;
 }
 
-void* rgba2luminance(uchar *data,const int& width,const int& height)
+void* rgba2luminance(uchar *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height );
 	fast_memset(dest, 0x00, width * height);
 
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = *s++;
 		s += 3;
@@ -2072,15 +2086,16 @@ void* rgba2luminance(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* luminance2rgba(uchar *data,const int& width,const int& height)
+void* luminance2rgba(uchar *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height * 4);
 	fast_memset(dest, 0x00, width * height * 4);
 
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = *s++;
 		d += 3;
@@ -2089,14 +2104,15 @@ void* luminance2rgba(uchar *data,const int& width,const int& height)
 	return (void*)dest;
 }
 
-void* rgba2luminance_alpha(uchar *data,const int& width,const int& height)
+void* rgba2luminance_alpha(uchar *data,const int width,const int height)
 {
 	uchar *dest = (uchar*)malloc( width * height * 2);
 	fast_memset(dest, 0x00, width * height * 2);
 	uchar *d = dest;
 	uchar *s = data;
+	int i;
 
-	for(int i = 0; i < width * height; ++i)
+	for ( i = 0; i < width * height; ++i)
 	{
 		*d++ = *s++;
 		s += 2;
@@ -2108,7 +2124,7 @@ void* rgba2luminance_alpha(uchar *data,const int& width,const int& height)
 
 // ----------------------------------------------------------------------------------------------
 
-void rgb24_to_yuv420p( const uchar * rgb, uchar * yuv, const uint& rgbIncrement, const uchar& flip, const int& srcFrameWidth, const int& srcFrameHeight )
+void rgb24_to_yuv420p( const uchar * rgb, uchar * yuv, const uint rgbIncrement, const uchar flip, const int srcFrameWidth, const int srcFrameHeight )
 {
 	#define rgbtoy(b, g, r, y) \
 		y=(uchar)(((int)(30*r) + (int)(59*g) + (int)(11*b))/100)
@@ -2165,7 +2181,7 @@ void rgb24_to_yuv420p( const uchar * rgb, uchar * yuv, const uint& rgbIncrement,
 	#undef rgbtoyuv
 }
 
-const char* Fmt2Str( const int& type )
+const char* Fmt2Str( const int type )
 {
 	#define CHK_TYPE(x)	case x : return #x;
 
@@ -2217,47 +2233,47 @@ const char* Fmt2Str( const int& type )
 }
 
 #define PROTO_FNC(name) \
- void  name ## _to_RGB444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA4441	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA4444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGB555	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA5551	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGB565	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGB888	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA8888	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR1444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR4444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR555	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR1555	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR565	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR888	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR8888	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGRA4441	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGRA4444	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGRA5551	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGRA8888	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGB332	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR332	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA5542	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR2554	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA6661	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR1666	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA6666	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR6666	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGB666	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_BGR666	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_RGBA5658	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_ABGR8565	(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");}
+ void  name ## _to_RGB444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA4441	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA4444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGB555	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA5551	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGB565	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGB888	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA8888	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR1444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR4444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR555	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR1555	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR565	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR888	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR8888	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGRA4441	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGRA4444	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGRA5551	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGRA8888	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGB332	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR332	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA5542	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR2554	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA6661	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR1666	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA6666	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR6666	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGB666	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_BGR666	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_RGBA5658	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_ABGR8565	(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");}
 
 #define PROTO_FNC2(name) \
- void  name ## _to_YV12 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_I420 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_NV12 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_Y41P 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_Y411 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_YUY2 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");} \
- void  name ## _to_UYVY 		(void *bsrc,void *bdst,const int& width,const int& height) {TRACE_DEBUG("Function  not implemented");}
+ void  name ## _to_YV12 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_I420 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_NV12 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_Y41P 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_Y411 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_YUY2 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");} \
+ void  name ## _to_UYVY 		(void *bsrc,void *bdst,const int width,const int height) {TRACE_DEBUG("Function  not implemented");}
 
 PROTO_FNC2( RGB444 );
 PROTO_FNC2( RGBA4441 );
@@ -2308,7 +2324,7 @@ PROTO_FNC( Y411 );
 PROTO_FNC( YUY2 );
 //PROTO_FNC( UYVY );
 
-void UYVY_to_RGB565(void *src,void *dest,const int& width,const int& height)
+void UYVY_to_RGB565(void *src,void *dest,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2346,7 +2362,7 @@ void UYVY_to_RGB565(void *src,void *dest,const int& width,const int& height)
 }
 
 // yuv422p_to_bgr565
-void UYVY_to_BGR565(void *src,void *dest,const int& width,const int& height)
+void UYVY_to_BGR565(void *src,void *dest,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2383,7 +2399,7 @@ void UYVY_to_BGR565(void *src,void *dest,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_RGBA8888(void *src,void *dst,const int& width,const int& height)
+void UYVY_to_RGBA8888(void *src,void *dst,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2417,7 +2433,7 @@ void UYVY_to_RGBA8888(void *src,void *dst,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_BGRA8888(void *src,void *dst,const int& width,const int& height)
+void UYVY_to_BGRA8888(void *src,void *dst,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2451,7 +2467,7 @@ void UYVY_to_BGRA8888(void *src,void *dst,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_ABGR8888(void *src,void *dst,const int& width,const int& height)
+void UYVY_to_ABGR8888(void *src,void *dst,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2485,7 +2501,7 @@ void UYVY_to_ABGR8888(void *src,void *dst,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_RGB888(void *src,void *dst,const int& width,const int& height)
+void UYVY_to_RGB888(void *src,void *dst,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2516,7 +2532,7 @@ void UYVY_to_RGB888(void *src,void *dst,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_BGR888(void *src,void *dst,const int& width,const int& height)
+void UYVY_to_BGR888(void *src,void *dst,const int width,const int height)
 {
 	uint i;
 	const uint pix_len = width * height;
@@ -2548,31 +2564,31 @@ void UYVY_to_BGR888(void *src,void *dst,const int& width,const int& height)
 	}
 }
 
-void UYVY_to_RGB444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA4441(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA4444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGB555(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA5551(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGR444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR1444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR4444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGR555(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR1555(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGRA4441(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGRA4444(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGRA5551(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGB332(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGR332(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA5542(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR2554(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA6661(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR1666(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA6666(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR6666(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGB666(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_BGR666(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_RGBA5658(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
-void UYVY_to_ABGR8565(void *bsrc,void *bdst,const int& width,const int& height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGB444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA4441(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA4444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGB555(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA5551(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGR444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR1444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR4444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGR555(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR1555(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGRA4441(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGRA4444(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGRA5551(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGB332(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGR332(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA5542(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR2554(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA6661(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR1666(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA6666(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR6666(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGB666(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_BGR666(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_RGBA5658(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
+void UYVY_to_ABGR8565(void *bsrc,void *bdst,const int width,const int height)	{TRACE_ERROR("Function  not implemented");}
 
 void converter_init(void)
 {
@@ -2673,7 +2689,7 @@ void converter_init(void)
 	#undef PROTO_CONV_INIT
 }
 
-int converter( void *bsrc, void *bdst, const int& width, const int& height, const int& from, const int& to )
+int converter( void *bsrc, void *bdst, const int width, const int height, const int from, const int to )
 {
 	CONV convertor = 0;
 

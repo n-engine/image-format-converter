@@ -32,7 +32,15 @@
 #ifndef __IMAGE_CONVERTER_XPM_INCLUDE_H_
 #define __IMAGE_CONVERTER_XPM_INCLUDE_H_
 
-uchar* load_xpm( const char *name, int &width, int &height );
+#ifdef __cplusplus
+extern "C" {
+#endif	/** extern "C" */
+
+uchar* load_xpm( const char *name, int *width, int *height );
+
+#ifdef __cplusplus
+};
+#endif	/** extern "C" */
 
 #endif	// __IMAGE_CONVERTER_XPM_INCLUDE_H_
 

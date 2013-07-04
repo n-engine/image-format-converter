@@ -1,5 +1,5 @@
 /* 
- * tga.cxx
+ * tga.c
  *
  * Copyright 2011-2013 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
@@ -19,7 +19,7 @@
  * Boston, MA 02111-1307, USA.
  *
  *
- * $Log: tga.cxx,v $
+ * $Log: tga.c,v $
  *
  *
  *
@@ -38,17 +38,19 @@
 #include "define.h"
 #include "tga.h"
 
-int save_tga( const char *name, const uchar *data, const int& width, const int& height )
+int save_tga( const char *name, const uchar *data, const int width, const int height )
 {
+	int i, size;
+	uchar *buf;
+	struct tga_header header;
 	FILE *file = fopen(name,"wb");
 
 	if(!file) {
 		fprintf( stderr,"save_tga(): error create \"%s\" file\n", name );
 		return 0;
 	}
-	
-	tga_header header;
-	fast_memset(&header,0,sizeof(header));
+
+	fast_memset( &header,0,sizeof(header) );
 
 	header.image_type	= 2;
 	header.width		= width;
@@ -59,10 +61,10 @@ int save_tga( const char *name, const uchar *data, const int& width, const int& 
 	fwrite( &header, 1, sizeof(header), file );
 
 	// rgba->bgra
-	int size = width * height * 4;
-	uchar *buf = new uchar[size];
+	size = width * height * 4;
+	buf = (uchar*)malloc(sizeof(uchar)*size);
 
-	for(int i = 0; i < size; i += 4) {
+	for( i = 0; i < size; i += 4) {
 		buf[i + 0] = data[i + 2];
 		buf[i + 1] = data[i + 1];
 		buf[i + 2] = data[i + 0];
@@ -71,7 +73,7 @@ int save_tga( const char *name, const uchar *data, const int& width, const int& 
 
 	fwrite(buf,sizeof(uchar),size,file);
 
-	KILLARRAY(buf);
+	free(buf);
 
 	fclose(file);
 	
