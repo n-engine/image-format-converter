@@ -5,6 +5,16 @@ Its portable and easy to add to your project.
 
 For example usage, read the example.cxx code.
 
+dependency :
+gcc (g++)
+make
+libtool
+automake
+autoconf
+
+easy to install dependency with aptitude :
+
+aptitude install build-essential libtool g++ make automake autoconf
 
 to compile under *nux :
 
