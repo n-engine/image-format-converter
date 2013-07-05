@@ -36,12 +36,12 @@
 #include <math.h>
 
 #include "define.h"
+#include "pixel.h"
 #include "tga.h"
 
-int save_tga( const char *name, const uchar *data, const int width, const int height )
+int save_tga( const char *name, const uchar *data, const int width, const int height, const int fmt )
 {
-	int i, size;
-	uchar *buf;
+	int size = 0, psize;
 	struct tga_header header;
 	FILE *file = fopen(name,"wb");
 
@@ -50,30 +50,49 @@ int save_tga( const char *name, const uchar *data, const int width, const int he
 		return 0;
 	}
 
-	fast_memset( &header,0,sizeof(header) );
+	fast_memset( &header, 0, sizeof(header) );
+
+	if ( fmt == RGB888 || fmt == BGR888 ) {
+		psize = 24;
+		size = width * height * 3;
+	}
+	else if ( fmt == RGBA8888 || fmt == BGRA8888 ) {
+		psize = 32;
+		size = width * height * 4;
+	}
+	else {
+		fprintf(stderr, "unknown format : %d\n", fmt);
+		return 0;
+	}
 
 	header.image_type	= 2;
 	header.width		= width;
 	header.height		= height;
-	header.pixel_size	= 32;
+	header.pixel_size	= psize;
 	header.attributes	= 0x28;
 
 	fwrite( &header, 1, sizeof(header), file );
 
-	// rgba->bgra
-	size = width * height * 4;
-	buf = (uchar*)malloc(sizeof(uchar)*size);
+	// rgb(a) -> bgr(a)
+	if ( RGB888 == fmt || RGBA8888 == fmt )
+	{
+		uchar *buf;
+		int i;
+		buf = (uchar*)malloc( sizeof(uchar) * size );
 
-	for( i = 0; i < size; i += 4) {
-		buf[i + 0] = data[i + 2];
-		buf[i + 1] = data[i + 1];
-		buf[i + 2] = data[i + 0];
-		buf[i + 3] = data[i + 3];
+		for( i = 0; i < size; i += (psize/8))
+		{
+			buf[i + 0] = data[i + 2];
+			buf[i + 1] = data[i + 1];
+			buf[i + 2] = data[i + 0];
+			if (RGBA8888 == fmt) buf[i + 3] = data[i + 3];
+		}
+
+		fwrite(buf,sizeof(uchar),size,file);
+		free(buf);
+	} else {
+		fwrite(data,sizeof(uchar),size,file);
 	}
-
-	fwrite(buf,sizeof(uchar),size,file);
-
-	free(buf);
 
 	fclose(file);
 	
@@ -81,5 +100,5 @@ int save_tga( const char *name, const uchar *data, const int width, const int he
 }
 
 // -----------------------------------------------------------------------------
-// tga.cxx - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
+// tga.c - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File
 // -----------------------------------------------------------------------------

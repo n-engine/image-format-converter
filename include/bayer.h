@@ -29,6 +29,8 @@
  * 
  * 
  */
+#ifndef __IMAGE_CONVERTER_BAYER_INCLUDE_H_
+#define __IMAGE_CONVERTER_BAYER_INCLUDE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +40,7 @@ enum PixelType
 {
 	eU8,
 	eU16,
-	eINT32
+	eINT32,
 	eFLOAT,
 	eDOUBLE,
 };
@@ -50,6 +52,8 @@ enum BayerType
 	eGBRG,
 	eRGGB,
 	eBGGR,
+	
+	eBAYER_LAST,
 };
 
 enum MethodName
@@ -67,20 +71,40 @@ enum MethodName
 
 struct Bayer_t
 {
-	void* data;
 	uint width;
 	uint height;
+	uint bpp;
 	uint size;
 	enum BayerType bayer;
 	enum MethodName method;
 	enum PixelType ptype;
+	union {
+		uchar *data;
+		uchar *data_8;
+		ushort *data_16;
+		float* dataf;
+		double* data_double;
+	};
 };
 
-uchar* convert_to_rgb888( struct Bayer_t* in );
+uint getPixelSize( enum PixelType type );
+
+int convert_to_rgb888( struct Bayer_t* in, uchar* dst );
+
+int bayer_to_image(
+	enum BayerType type,
+	int bpp,
+	int w,
+	int h,
+	enum MethodName method,
+	const char* fileIn,
+	const char* fileOut);
 
 #ifdef __cplusplus
 };
 #endif	/** extern "C" */
+
+#endif	// __IMAGE_CONVERTER_BAYER_INCLUDE_H_
 
 // -----------------------------------------------------------------------------
 // bayer.h - Last Change: $Date: 2012-05-15 23:36:52 $ - End Of File

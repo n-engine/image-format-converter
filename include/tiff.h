@@ -1,5 +1,5 @@
 /* 
- * tga.h
+ * tiff.h
  *
  * Copyright 2011-2013 ESTEVE Olivier <naskel .[.at.]. gmail.com>
  *
@@ -19,7 +19,7 @@
  * Boston, MA 02111-1307, USA.
  *
  *
- * $Log: tga.h,v $
+ * $Log: tiff.h,v $
  *
  *
  *
@@ -29,33 +29,14 @@
  * 
  * 
  */
-#ifndef __IMAGE_CONVERTER_TGA_INCLUDE_H_
-#define __IMAGE_CONVERTER_TGA_INCLUDE_H_
+#ifndef __IMAGE_CONVERTER_TIFF_INCLUDE_H_
+#define __IMAGE_CONVERTER_TIFF_INCLUDE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif	/** extern "C" */
 
-//#pragma pack(1)
-
-struct tga_header {
-	uchar id_length;
-	uchar colormap_type;
-	uchar image_type;
-	ushort colormap_index;
-	ushort colormap_length;
-	uchar colormap_size;
-	ushort x_orign;
-	ushort y_orign;
-	ushort width;
-	ushort height;
-	uchar pixel_size;
-	uchar attributes;
-} __attribute__((packed));
-
-//#pragma pack(4)
-
-int save_tga( const char *name, const uchar *data, const int width, const int height, const int fmt );
+int save_tiff( const char *name, const uchar *data, const int width, const int height, const int fmt );
 
 #ifdef __cplusplus
 };

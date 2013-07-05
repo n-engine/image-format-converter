@@ -42,6 +42,8 @@
 #include "xpm.h"
 #include "tga.h"
 
+#include "bayer.h"
+
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof((a)[0]))
 
 // this struct is for example only (this is not really needed)
@@ -121,10 +123,10 @@ static void convert( const uchar* src, const int from, const int w, const int h 
 			converter( dst, data, w, h, to, RGBA8888 );
 
 			// save data
-			save_tga( str, data, w, h );
+			save_tga( str, data, w, h, RGBA8888 );
 		}
 		else
-			save_tga( str, dst, w, h );
+			save_tga( str, dst, w, h, RGBA8888 );
 	}
 
 	free(dst);
@@ -143,7 +145,7 @@ static uchar* load_lenna()
 	return buffer;
 }
 
-int main( int argc, char* argv[] )
+static void do_convert()
 {
 	int w,h,i;
 	int in_format;
@@ -183,6 +185,31 @@ int main( int argc, char* argv[] )
 
 	free(org);
 	free(dst);
+}
+
+void do_bayer() {
+	#define DO_TEST_DEBAYER(method) \
+		bayer_to_image( eBGGR, 10, 2048, 1028, \
+			method, \
+			"samples/sample.raw", \
+			"output/sample_" # method ".tiff" \
+		);
+	DO_TEST_DEBAYER(eNEAREST);
+	/*DO_TEST_DEBAYER(eBILINEAR);*/
+}
+
+#define DO_CONVERT	(1<<0)
+#define DO_BAYER	(1<<1)
+
+int main( int argc, char* argv[] )
+{
+	int run = 0;
+
+	//run |= DO_CONVERT;
+	run |= DO_BAYER;
+
+	if ( run & DO_CONVERT ) do_convert();
+	if ( run & DO_BAYER ) do_bayer();
 
 	return EXIT_SUCCESS;
 }
