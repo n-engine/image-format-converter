@@ -1,5 +1,6 @@
-Image Format Converter is a easy to use image format converter.
-39 Format actually exist and can be converted from one to another one.
+
+**Image Format Converter** (libifc) is an library for converting image format to another format.
+_39_ Format actually exist and can be converted from one to another one.
 
 Its portable and easy to add to your project.
 
@@ -25,4 +26,6 @@ make
 to install :
 
 sudo make install
+
+**Note**: The will be in the public domaine soon
 
