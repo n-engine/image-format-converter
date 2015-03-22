@@ -27,5 +27,5 @@ to install :
 
 sudo make install
 
-**Note**: The will be in the public domaine soon
+**Note**: The libifc will be in the public domaine **SOON**
 
